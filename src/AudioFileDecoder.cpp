@@ -1,5 +1,7 @@
 #include <QtAudioCapture/AudioFileDecoder.h>
 #include <QDebug>
+#include <QUrl>
+#include <QAudioDecoder>
 
 namespace QtAudioCapture {
 
