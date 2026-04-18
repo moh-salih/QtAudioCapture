@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Qt6 REQUIRED COMPONENTS Core Multimedia)
+
+include("${CMAKE_CURRENT_LIST_DIR}/QtAudioCaptureTargets.cmake")
+check_required_components(QtAudioCapture)
