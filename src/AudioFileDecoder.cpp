@@ -8,12 +8,9 @@ namespace QtAudioCapture {
 AudioFileDecoder::AudioFileDecoder(QObject *parent) : QObject(parent) {
     mDecoder = new QAudioDecoder(this);
 
-    connect(mDecoder, &QAudioDecoder::bufferReady,
-            this,     &AudioFileDecoder::onBufferReady);
-    connect(mDecoder, &QAudioDecoder::finished,
-            this,     &AudioFileDecoder::onFinished);
-    connect(mDecoder, &QAudioDecoder::errorOccurred,
-            this,     &AudioFileDecoder::onError);
+    connect(mDecoder, &QAudioDecoder::bufferReady, this, &AudioFileDecoder::onBufferReady);
+    connect(mDecoder, &QAudioDecoder::finished, this, &AudioFileDecoder::onFinished);
+    connect(mDecoder, qOverload<QAudioDecoder::Error>(&QAudioDecoder::error), this, &AudioFileDecoder::onError);
 }
 
 AudioFileDecoder::~AudioFileDecoder() {
