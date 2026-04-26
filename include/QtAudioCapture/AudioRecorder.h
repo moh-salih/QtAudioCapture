@@ -15,7 +15,7 @@ namespace QtAudioCapture {
         ~AudioRecorder() override;
 
         void setDevice(const QAudioDevice &device);
-        void start();
+        void start(int sampleRate = 16000, int channelCount = 1);
         void stop();
 
         bool          isRunning()   const;

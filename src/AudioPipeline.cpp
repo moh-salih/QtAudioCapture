@@ -13,10 +13,18 @@ AudioPipeline::~AudioPipeline() {
 }
 
 void AudioPipeline::setConfig(const Config &config) {
-    mConfig      = config;
-    mWindowSize  = (mConfig.targetSampleRate * mConfig.windowDurationMs)  / 1000;
-    mOverlapSize = (mConfig.targetSampleRate * mConfig.overlapDurationMs) / 1000;
+    Q_ASSERT_X(config.stepDurationMs > 0,
+               "AudioPipeline::setConfig",
+               "stepDurationMs must be greater than zero");
+    Q_ASSERT_X(config.stepDurationMs < config.windowDurationMs,
+               "AudioPipeline::setConfig",
+               "stepDurationMs must be less than windowDurationMs");
+
+    mConfig     = config;
+    mWindowSize = (mConfig.targetSampleRate * mConfig.windowDurationMs) / 1000;
+    mStepSize   = (mConfig.targetSampleRate * mConfig.stepDurationMs)   / 1000;
 }
+
 
 void AudioPipeline::start() {
     if (mStatus == Status::Running) return;
@@ -33,17 +41,14 @@ void AudioPipeline::start() {
                     this,      &AudioPipeline::onError);
         }
         mRecorder->setDevice(mConfig.device);
-        mRecorder->start();
+        mRecorder->start(mConfig.targetSampleRate, mConfig.channelCount);
 
     } else {
         if (!mFileDecoder) {
             mFileDecoder = new AudioFileDecoder(this);
-            connect(mFileDecoder, &AudioFileDecoder::audioDataReady,
-                    this,         &AudioPipeline::onAudioDataReady);
-            connect(mFileDecoder, &AudioFileDecoder::finished,
-                    this,         &AudioPipeline::onFileFinished);
-            connect(mFileDecoder, &AudioFileDecoder::errorEncountered,
-                    this,         &AudioPipeline::onError);
+            connect(mFileDecoder, &AudioFileDecoder::audioDataReady, this, &AudioPipeline::onAudioDataReady);
+            connect(mFileDecoder, &AudioFileDecoder::finished, this, &AudioPipeline::onFileFinished);
+            connect(mFileDecoder, &AudioFileDecoder::errorEncountered, this, &AudioPipeline::onError);
         }
         mFileDecoder->setFile(mConfig.filePath);
         mFileDecoder->start();
@@ -69,8 +74,7 @@ bool AudioPipeline::isRunning() const {
 
 void AudioPipeline::onAudioDataReady(const QByteArray   &pcmData,
                                       const QAudioFormat &format) {
-    const std::vector<float> samples =
-        AudioResampler::resample(pcmData, format, mConfig.targetSampleRate);
+    const std::vector<float> samples = AudioResampler::resample(pcmData, format, mConfig.targetSampleRate);
 
     if (samples.empty()) return;
     processFloatSamples(samples);
@@ -81,14 +85,10 @@ void AudioPipeline::processFloatSamples(const std::vector<float> &samples) {
 
     while (static_cast<int>(mSampleBuffer.size()) >= mWindowSize) {
         // Emit exactly one window worth of samples
-        const std::vector<float> window(mSampleBuffer.begin(),
-                                        mSampleBuffer.begin() + mWindowSize);
+        const std::vector<float> window(mSampleBuffer.begin(), mSampleBuffer.begin() + mWindowSize);
         emit windowReady(window);
 
-        // Step forward by (windowSize - overlapSize), retaining the overlap
-        const int step = mWindowSize - mOverlapSize;
-        mSampleBuffer.erase(mSampleBuffer.begin(),
-                            mSampleBuffer.begin() + step);
+        mSampleBuffer.erase(mSampleBuffer.begin(), mSampleBuffer.begin() + mStepSize);
     }
 }
 

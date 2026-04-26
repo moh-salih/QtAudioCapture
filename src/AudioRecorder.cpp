@@ -14,12 +14,10 @@ void AudioRecorder::setDevice(const QAudioDevice &device) {
     mDevice = device;
 }
 
-void AudioRecorder::start() {
+void AudioRecorder::start(int sampleRate, int channelCount) {
     stop();
 
-    const QAudioDevice &dev = mDevice.isNull()
-                            ? QMediaDevices::defaultAudioInput()
-                            : mDevice;
+    const QAudioDevice &dev = mDevice.isNull() ? QMediaDevices::defaultAudioInput() : mDevice;
 
     if (dev.isNull()) {
         emit errorEncountered("No audio input device available.");
@@ -29,8 +27,8 @@ void AudioRecorder::start() {
     // Request 16kHz mono Int16 — the closest native format to what
     // whisper wants. AudioResampler handles any mismatch.
     QAudioFormat format;
-    format.setSampleRate(16000);
-    format.setChannelCount(1);
+    format.setSampleRate(sampleRate);
+    format.setChannelCount(channelCount);
     format.setSampleFormat(QAudioFormat::Int16);
 
     if (!dev.isFormatSupported(format)) {
