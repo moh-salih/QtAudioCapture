@@ -57,11 +57,15 @@ void AudioRecorder::start(int sampleRate, int channelCount) {
 void AudioRecorder::stop() {
     if (mAudioSource) {
         mAudioSource->stop();
+        if (mIODevice) {
+            disconnect(mIODevice, &QIODevice::readyRead, this, &AudioRecorder::onAudioDataReady);
+            mIODevice = nullptr;
+        }
         delete mAudioSource;
         mAudioSource = nullptr;
-        mIODevice    = nullptr;
     }
 }
+
 
 bool AudioRecorder::isRunning() const {
     return mAudioSource &&

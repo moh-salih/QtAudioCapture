@@ -29,6 +29,12 @@ void AudioPipeline::setConfig(const Config &config) {
 void AudioPipeline::start() {
     if (mStatus == Status::Running) return;
 
+    if (mWindowSize == 0 || mStepSize == 0) {
+        emit errorEncountered("AudioPipeline: setConfig() must be called before start().");
+        return;
+    }
+
+
     mSampleBuffer.clear();
     mSampleBuffer.reserve(mWindowSize * 2);
 
@@ -56,12 +62,12 @@ void AudioPipeline::start() {
 
     setStatus(Status::Running);
 }
-
 void AudioPipeline::stop() {
     if (mRecorder)    mRecorder->stop();
     if (mFileDecoder) mFileDecoder->stop();
     mSampleBuffer.clear();
-    setStatus(Status::Idle);
+    if (mStatus != Status::Error)
+        setStatus(Status::Idle);
 }
 
 Status AudioPipeline::status() const {

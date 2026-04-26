@@ -49,6 +49,7 @@ private:
     // Ring buffer for windowing
     std::vector<float> mSampleBuffer;
     int                mWindowSize  = 0;   // samples
+    int                mStepSize    = 0;
 };
 
 } // namespace QtAudioCapture
