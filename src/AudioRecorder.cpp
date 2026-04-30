@@ -20,12 +20,11 @@ void AudioRecorder::start(int sampleRate, int channelCount) {
     const QAudioDevice &dev = mDevice.isNull() ? QMediaDevices::defaultAudioInput() : mDevice;
 
     if (dev.isNull()) {
-        emit errorEncountered("No audio input device available.");
+        qCritical() << "QtAudioCapture:" << errorToString(Error::DeviceUnavailable);
+        emit errorOccurred(Error::DeviceUnavailable);
         return;
     }
 
-    // Request 16kHz mono Int16 — the closest native format to what
-    // whisper wants. AudioResampler handles any mismatch.
     QAudioFormat format;
     format.setSampleRate(sampleRate);
     format.setChannelCount(channelCount);
@@ -43,7 +42,8 @@ void AudioRecorder::start(int sampleRate, int channelCount) {
     mIODevice    = mAudioSource->start();
 
     if (!mIODevice) {
-        emit errorEncountered("Failed to start audio source.");
+        qCritical() << "QtAudioCapture:" << errorToString(Error::RecordingStartFailed);
+        emit errorOccurred(Error::RecordingStartFailed);
         return;
     }
 
@@ -66,10 +66,8 @@ void AudioRecorder::stop() {
     }
 }
 
-
 bool AudioRecorder::isRunning() const {
-    return mAudioSource &&
-           mAudioSource->state() == QAudio::ActiveState;
+    return mAudioSource && mAudioSource->state() == QAudio::ActiveState;
 }
 
 QAudioFormat AudioRecorder::activeFormat() const {

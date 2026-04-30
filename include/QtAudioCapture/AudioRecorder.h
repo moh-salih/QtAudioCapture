@@ -18,12 +18,12 @@ namespace QtAudioCapture {
         void start(int sampleRate = 16000, int channelCount = 1);
         void stop();
 
-        bool          isRunning()   const;
+        bool          isRunning()    const;
         QAudioFormat  activeFormat() const;
 
     signals:
         void audioDataReady(const QByteArray &pcmData, const QAudioFormat &format);
-        void errorEncountered(const QString &message);
+        void errorOccurred(QtAudioCapture::Error error);
 
     private slots:
         void onAudioDataReady();

@@ -25,16 +25,13 @@ public:
 signals:
     void windowReady(const std::vector<float> &samples);
     void statusChanged(QtAudioCapture::Status status);
-    void errorEncountered(const QString &message);
-
-    // Emitted only in File mode when decoding completes.
-    // The final partial window (if any) is flushed before this fires.
+    void errorOccurred(QtAudioCapture::Error error);
     void fileDecodingFinished();
 
 private slots:
     void onAudioDataReady(const QByteArray &pcmData, const QAudioFormat &format);
     void onFileFinished();
-    void onError(const QString &message);
+    void onError(QtAudioCapture::Error error);
 
 private:
     void processFloatSamples(const std::vector<float> &samples);
@@ -46,9 +43,8 @@ private:
     AudioFileDecoder *mFileDecoder = nullptr;
     Status            mStatus      = Status::Idle;
 
-    // Ring buffer for windowing
     std::vector<float> mSampleBuffer;
-    int                mWindowSize  = 0;   // samples
+    int                mWindowSize  = 0;
     int                mStepSize    = 0;
 };
 

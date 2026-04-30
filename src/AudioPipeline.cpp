@@ -25,15 +25,14 @@ void AudioPipeline::setConfig(const Config &config) {
     mStepSize   = (mConfig.targetSampleRate * mConfig.stepDurationMs)   / 1000;
 }
 
-
 void AudioPipeline::start() {
     if (mStatus == Status::Running) return;
 
     if (mWindowSize == 0 || mStepSize == 0) {
-        emit errorEncountered("AudioPipeline: setConfig() must be called before start().");
+        qCritical() << "QtAudioCapture:" << errorToString(Error::ConfigNotSet);
+        emit errorOccurred(Error::ConfigNotSet);
         return;
     }
-
 
     mSampleBuffer.clear();
     mSampleBuffer.reserve(mWindowSize * 2);
@@ -43,7 +42,7 @@ void AudioPipeline::start() {
             mRecorder = new AudioRecorder(this);
             connect(mRecorder, &AudioRecorder::audioDataReady,
                     this,      &AudioPipeline::onAudioDataReady);
-            connect(mRecorder, &AudioRecorder::errorEncountered,
+            connect(mRecorder, &AudioRecorder::errorOccurred,
                     this,      &AudioPipeline::onError);
         }
         mRecorder->setDevice(mConfig.device);
@@ -52,9 +51,12 @@ void AudioPipeline::start() {
     } else {
         if (!mFileDecoder) {
             mFileDecoder = new AudioFileDecoder(this);
-            connect(mFileDecoder, &AudioFileDecoder::audioDataReady, this, &AudioPipeline::onAudioDataReady);
-            connect(mFileDecoder, &AudioFileDecoder::finished, this, &AudioPipeline::onFileFinished);
-            connect(mFileDecoder, &AudioFileDecoder::errorEncountered, this, &AudioPipeline::onError);
+            connect(mFileDecoder, &AudioFileDecoder::audioDataReady,
+                    this,         &AudioPipeline::onAudioDataReady);
+            connect(mFileDecoder, &AudioFileDecoder::finished,
+                    this,         &AudioPipeline::onFileFinished);
+            connect(mFileDecoder, &AudioFileDecoder::errorOccurred,
+                    this,         &AudioPipeline::onError);
         }
         mFileDecoder->setFile(mConfig.filePath);
         mFileDecoder->start();
@@ -62,6 +64,7 @@ void AudioPipeline::start() {
 
     setStatus(Status::Running);
 }
+
 void AudioPipeline::stop() {
     if (mRecorder)    mRecorder->stop();
     if (mFileDecoder) mFileDecoder->stop();
@@ -78,10 +81,8 @@ bool AudioPipeline::isRunning() const {
     return mStatus == Status::Running;
 }
 
-void AudioPipeline::onAudioDataReady(const QByteArray   &pcmData,
-                                      const QAudioFormat &format) {
+void AudioPipeline::onAudioDataReady(const QByteArray &pcmData, const QAudioFormat &format) {
     const std::vector<float> samples = AudioResampler::resample(pcmData, format, mConfig.targetSampleRate);
-
     if (samples.empty()) return;
     processFloatSamples(samples);
 }
@@ -90,18 +91,14 @@ void AudioPipeline::processFloatSamples(const std::vector<float> &samples) {
     mSampleBuffer.insert(mSampleBuffer.end(), samples.begin(), samples.end());
 
     while (static_cast<int>(mSampleBuffer.size()) >= mWindowSize) {
-        // Emit exactly one window worth of samples
         const std::vector<float> window(mSampleBuffer.begin(), mSampleBuffer.begin() + mWindowSize);
         emit windowReady(window);
-
         mSampleBuffer.erase(mSampleBuffer.begin(), mSampleBuffer.begin() + mStepSize);
     }
 }
 
 void AudioPipeline::flushWindow() {
     if (mSampleBuffer.empty()) return;
-
-    // Pad the remaining samples to a full window with silence
     mSampleBuffer.resize(mWindowSize, 0.0f);
     emit windowReady(mSampleBuffer);
     mSampleBuffer.clear();
@@ -113,10 +110,10 @@ void AudioPipeline::onFileFinished() {
     emit fileDecodingFinished();
 }
 
-void AudioPipeline::onError(const QString &message) {
-    qCritical() << "QtAudioCapture:" << message;
+void AudioPipeline::onError(QtAudioCapture::Error error) {
+    qCritical() << "QtAudioCapture:" << errorToString(error);
     setStatus(Status::Error);
-    emit errorEncountered(message);
+    emit errorOccurred(error);
 }
 
 void AudioPipeline::setStatus(Status status) {

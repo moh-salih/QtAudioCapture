@@ -1,7 +1,6 @@
 #include <QtAudioCapture/AudioFileDecoder.h>
 #include <QDebug>
 #include <QUrl>
-#include <QAudioDecoder>
 
 namespace QtAudioCapture {
 
@@ -9,8 +8,9 @@ AudioFileDecoder::AudioFileDecoder(QObject *parent) : QObject(parent) {
     mDecoder = new QAudioDecoder(this);
 
     connect(mDecoder, &QAudioDecoder::bufferReady, this, &AudioFileDecoder::onBufferReady);
-    connect(mDecoder, &QAudioDecoder::finished, this, &AudioFileDecoder::onFinished);
-    connect(mDecoder, qOverload<QAudioDecoder::Error>(&QAudioDecoder::error), this, &AudioFileDecoder::onError);
+    connect(mDecoder, &QAudioDecoder::finished,    this, &AudioFileDecoder::onFinished);
+    connect(mDecoder, qOverload<QAudioDecoder::Error>(&QAudioDecoder::error),
+            this, &AudioFileDecoder::onError);
 }
 
 AudioFileDecoder::~AudioFileDecoder() {
@@ -23,7 +23,8 @@ void AudioFileDecoder::setFile(const QString &filePath) {
 
 void AudioFileDecoder::start() {
     if (mDecoder->source().isEmpty()) {
-        emit errorEncountered("No file path set.");
+        qCritical() << "QtAudioCapture:" << errorToString(Error::DecodingFailed);
+        emit errorOccurred(Error::DecodingFailed);
         return;
     }
     mDecoder->start();
@@ -42,9 +43,6 @@ void AudioFileDecoder::onBufferReady() {
         const QAudioBuffer buffer = mDecoder->read();
         if (!buffer.isValid()) continue;
 
-        // QAudioBuffer::constData<T> gives a typed pointer into the raw PCM.
-        // We copy into a QByteArray so the downstream interface stays uniform
-        // with AudioRecorder.
         const QByteArray data(
             reinterpret_cast<const char *>(buffer.constData<char>()),
             buffer.byteCount());
@@ -58,10 +56,10 @@ void AudioFileDecoder::onFinished() {
     emit finished();
 }
 
-void AudioFileDecoder::onError(QAudioDecoder::Error error) {
-    emit errorEncountered(
-        QString("Audio decoder error: %1").arg(mDecoder->errorString()));
-    Q_UNUSED(error)
+void AudioFileDecoder::onError(QAudioDecoder::Error /*error*/) {
+    qCritical() << "QtAudioCapture:" << errorToString(Error::DecodingFailed)
+                << mDecoder->errorString();
+    emit errorOccurred(Error::DecodingFailed);
 }
 
 } // namespace QtAudioCapture

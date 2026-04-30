@@ -21,7 +21,7 @@ namespace QtAudioCapture {
     signals:
         void audioDataReady(const QByteArray &pcmData, const QAudioFormat &format);
         void finished();
-        void errorEncountered(const QString &message);
+        void errorOccurred(QtAudioCapture::Error error);
 
     private slots:
         void onBufferReady();
