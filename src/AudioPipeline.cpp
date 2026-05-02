@@ -24,7 +24,6 @@ void AudioPipeline::setConfig(const Config &config) {
     mWindowSize = (mConfig.targetSampleRate * mConfig.windowDurationMs) / 1000;
     mStepSize   = (mConfig.targetSampleRate * mConfig.stepDurationMs)   / 1000;
 }
-
 void AudioPipeline::start() {
     if (mStatus == Status::Running) return;
 
@@ -38,6 +37,12 @@ void AudioPipeline::start() {
     mSampleBuffer.reserve(mWindowSize * 2);
 
     if (mConfig.source == Source::Microphone) {
+        // tear down file decoder if switching source
+        if (mFileDecoder) {
+            mFileDecoder->stop();
+            delete mFileDecoder;
+            mFileDecoder = nullptr;
+        }
         if (!mRecorder) {
             mRecorder = new AudioRecorder(this);
             connect(mRecorder, &AudioRecorder::audioDataReady,
@@ -49,6 +54,12 @@ void AudioPipeline::start() {
         mRecorder->start(mConfig.targetSampleRate, mConfig.channelCount);
 
     } else {
+        // tear down recorder if switching source
+        if (mRecorder) {
+            mRecorder->stop();
+            delete mRecorder;
+            mRecorder = nullptr;
+        }
         if (!mFileDecoder) {
             mFileDecoder = new AudioFileDecoder(this);
             connect(mFileDecoder, &AudioFileDecoder::audioDataReady,
@@ -65,6 +76,12 @@ void AudioPipeline::start() {
     setStatus(Status::Running);
 }
 
+void AudioPipeline::flushWindow() {
+    if (mSampleBuffer.empty()) return;
+    std::vector<float> window = std::move(mSampleBuffer);  // take ownership, mSampleBuffer is now empty
+    window.resize(mWindowSize, 0.0f);                      // zero-pad to full window
+    emit windowReady(window);                              // emit local copy — no reentrance risk
+}
 void AudioPipeline::stop() {
     if (mRecorder)    mRecorder->stop();
     if (mFileDecoder) mFileDecoder->stop();
@@ -95,13 +112,6 @@ void AudioPipeline::processFloatSamples(const std::vector<float> &samples) {
         emit windowReady(window);
         mSampleBuffer.erase(mSampleBuffer.begin(), mSampleBuffer.begin() + mStepSize);
     }
-}
-
-void AudioPipeline::flushWindow() {
-    if (mSampleBuffer.empty()) return;
-    mSampleBuffer.resize(mWindowSize, 0.0f);
-    emit windowReady(mSampleBuffer);
-    mSampleBuffer.clear();
 }
 
 void AudioPipeline::onFileFinished() {

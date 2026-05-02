@@ -13,7 +13,6 @@ AudioRecorder::~AudioRecorder() {
 void AudioRecorder::setDevice(const QAudioDevice &device) {
     mDevice = device;
 }
-
 void AudioRecorder::start(int sampleRate, int channelCount) {
     stop();
 
@@ -38,7 +37,7 @@ void AudioRecorder::start(int sampleRate, int channelCount) {
                 << format.sampleFormat();
     }
 
-    mAudioSource = new QAudioSource(dev, format, this);
+    mAudioSource = new QAudioSource(dev, format);  // no parent — manual delete in stop()
     mIODevice    = mAudioSource->start();
 
     if (!mIODevice) {
@@ -53,6 +52,7 @@ void AudioRecorder::start(int sampleRate, int channelCount) {
             << format.sampleRate() << "Hz"
             << format.channelCount() << "ch";
 }
+
 
 void AudioRecorder::stop() {
     if (mAudioSource) {
