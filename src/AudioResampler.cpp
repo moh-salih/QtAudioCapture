@@ -4,13 +4,11 @@
 
 namespace QtAudioCapture {
 
-std::vector<float> AudioResampler::resample(const QByteArray   &pcmData,
-                                             const QAudioFormat &sourceFormat,
-                                             int                 targetSampleRate) {
+QVector<float> AudioResampler::resample(const QByteArray   &pcmData,const QAudioFormat &sourceFormat,int targetSampleRate) {
     if (pcmData.isEmpty()) return {};
 
-    const std::vector<float> mono = toMonoFloat(pcmData, sourceFormat);
-    if (mono.empty()) return {};
+    const QVector<float> mono = toMonoFloat(pcmData, sourceFormat);
+    if (mono.isEmpty()) return {};
 
     const int sourceSampleRate = sourceFormat.sampleRate();
     if (sourceSampleRate == targetSampleRate) return mono;
@@ -19,8 +17,7 @@ std::vector<float> AudioResampler::resample(const QByteArray   &pcmData,
 }
 
 
-std::vector<float> AudioResampler::toMonoFloat(const QByteArray   &data,
-                                                const QAudioFormat &format) {
+QVector<float> AudioResampler::toMonoFloat(const QByteArray &data, const QAudioFormat &format) {
     const qsizetype channelCount   = format.channelCount();
     const qsizetype bytesPerSample = format.bytesPerSample();
 
@@ -34,8 +31,8 @@ std::vector<float> AudioResampler::toMonoFloat(const QByteArray   &data,
     const qsizetype frameCount   = totalSamples / channelCount;
     const auto     *raw          = reinterpret_cast<const uint8_t *>(data.constData());
 
-    std::vector<float> mono;
-    mono.reserve(static_cast<size_t>(frameCount));
+    QVector<float> mono;
+    mono.reserve(frameCount);
 
     for (qsizetype f = 0; f < frameCount; ++f) {
         float sum = 0.0f;
@@ -71,20 +68,20 @@ std::vector<float> AudioResampler::toMonoFloat(const QByteArray   &data,
             }
             sum += sample;
         }
-        mono.push_back(sum / static_cast<float>(channelCount));
+        mono.append(sum / static_cast<float>(channelCount));
     }
 
     return mono;
 }
 
 
-std::vector<float> AudioResampler::resampleLinear(const std::vector<float> &input, int sourceSampleRate, int targetSampleRate) {
-    if (input.empty() || sourceSampleRate <= 0 || targetSampleRate <= 0) return {};
+QVector<float> AudioResampler::resampleLinear(const QVector<float> &input, int sourceSampleRate, int targetSampleRate) {
+    if (input.isEmpty() || sourceSampleRate <= 0 || targetSampleRate <= 0) return {};
 
     const double ratio      = static_cast<double>(sourceSampleRate) / targetSampleRate;
     const int    outputSize = static_cast<int>(input.size() / ratio);
 
-    std::vector<float> output;
+    QVector<float> output;
     output.reserve(outputSize);
 
     for (int i = 0; i < outputSize; ++i) {
@@ -93,9 +90,9 @@ std::vector<float> AudioResampler::resampleLinear(const std::vector<float> &inpu
         const float  frac     = static_cast<float>(srcPos - srcIndex);
 
         if (srcIndex + 1 < static_cast<int>(input.size())) {
-            output.push_back(input[srcIndex] * (1.0f - frac) + input[srcIndex + 1] * frac);
+            output.append(input[srcIndex] * (1.0f - frac) + input[srcIndex + 1] * frac);
         } else {
-            output.push_back(input[srcIndex]);
+            output.append(input[srcIndex]);
         }
     }
 

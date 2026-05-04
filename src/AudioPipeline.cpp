@@ -76,12 +76,23 @@ void AudioPipeline::start() {
     setStatus(Status::Running);
 }
 
-void AudioPipeline::flushWindow() {
-    if (mSampleBuffer.empty()) return;
-    std::vector<float> window = std::move(mSampleBuffer);  // take ownership, mSampleBuffer is now empty
-    window.resize(mWindowSize, 0.0f);                      // zero-pad to full window
-    emit windowReady(window);                              // emit local copy — no reentrance risk
+void AudioPipeline::processFloatSamples(const QVector<float> &samples) {
+    mSampleBuffer.append(samples);
+
+    while (mSampleBuffer.size() >= mWindowSize) {
+        emit windowReady(mSampleBuffer.sliced(0, mWindowSize));
+        mSampleBuffer.remove(0, mStepSize);
+    }
 }
+
+void AudioPipeline::flushWindow() {
+    if (mSampleBuffer.isEmpty()) return;
+    while (mSampleBuffer.size() < mWindowSize)
+        mSampleBuffer.append(0.0f);
+    emit windowReady(mSampleBuffer);
+    mSampleBuffer.clear();
+}
+
 void AudioPipeline::stop() {
     if (mRecorder)    mRecorder->stop();
     if (mFileDecoder) mFileDecoder->stop();
@@ -99,20 +110,11 @@ bool AudioPipeline::isRunning() const {
 }
 
 void AudioPipeline::onAudioDataReady(const QByteArray &pcmData, const QAudioFormat &format) {
-    const std::vector<float> samples = AudioResampler::resample(pcmData, format, mConfig.targetSampleRate);
-    if (samples.empty()) return;
+    const QVector<float> samples = AudioResampler::resample(pcmData, format, mConfig.targetSampleRate);
+    if (samples.isEmpty()) return;
     processFloatSamples(samples);
 }
 
-void AudioPipeline::processFloatSamples(const std::vector<float> &samples) {
-    mSampleBuffer.insert(mSampleBuffer.end(), samples.begin(), samples.end());
-
-    while (static_cast<int>(mSampleBuffer.size()) >= mWindowSize) {
-        const std::vector<float> window(mSampleBuffer.begin(), mSampleBuffer.begin() + mWindowSize);
-        emit windowReady(window);
-        mSampleBuffer.erase(mSampleBuffer.begin(), mSampleBuffer.begin() + mStepSize);
-    }
-}
 
 void AudioPipeline::onFileFinished() {
     flushWindow();

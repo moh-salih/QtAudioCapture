@@ -1,6 +1,5 @@
 #pragma once
 #include <QObject>
-#include <vector>
 #include <QtAudioCapture/Types.h>
 
 namespace QtAudioCapture {
@@ -23,7 +22,7 @@ public:
     bool   isRunning() const;
 
 signals:
-    void windowReady(const std::vector<float> &samples);
+    void windowReady(const QVector<float> &samples);
     void statusChanged(QtAudioCapture::Status status);
     void errorOccurred(QtAudioCapture::Error error);
     void fileDecodingFinished();
@@ -34,16 +33,16 @@ private slots:
     void onError(QtAudioCapture::Error error);
 
 private:
-    void processFloatSamples(const std::vector<float> &samples);
+    void processFloatSamples(const QVector<float> &samples);
     void flushWindow();
     void setStatus(Status status);
 
-    Config            mConfig;
-    AudioRecorder    *mRecorder    = nullptr;
-    AudioFileDecoder *mFileDecoder = nullptr;
-    Status            mStatus      = Status::Idle;
+    Config             mConfig;
+    AudioRecorder    * mRecorder    = nullptr;
+    AudioFileDecoder * mFileDecoder = nullptr;
+    Status             mStatus      = Status::Idle;
 
-    std::vector<float> mSampleBuffer;
+    QVector<float>     mSampleBuffer;
     int                mWindowSize  = 0;
     int                mStepSize    = 0;
 };

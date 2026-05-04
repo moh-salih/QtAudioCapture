@@ -1,6 +1,6 @@
 #pragma once
 #include <QAudioFormat>
-#include <vector>
+#include <QVector>
 
 namespace QtAudioCapture {
 
@@ -8,15 +8,11 @@ namespace QtAudioCapture {
     public:
         // Converts raw PCM bytes in sourceFormat to 16kHz mono float samples.
         // Returns an empty vector if the format is unsupported.
-        static std::vector<float> resample(const QByteArray   &pcmData,
-                                           const QAudioFormat &sourceFormat,
-                                           int                 targetSampleRate);
+        static QVector<float> resample(const QByteArray &pcmData, const QAudioFormat &sourceFormat, int targetSampleRate);
     private:
-        static std::vector<float> toMonoFloat(const QByteArray   &data,
-                                              const QAudioFormat &format);
-        static std::vector<float> resampleLinear(const std::vector<float> &input,
-                                                 int                       sourceSampleRate,
-                                                 int                       targetSampleRate);
+        static QVector<float> toMonoFloat(const QByteArray &data, const QAudioFormat &format);
+
+        static QVector<float> resampleLinear(const QVector<float> &input, int sourceSampleRate, int targetSampleRate);
     };
 
 } // namespace QtAudioCapture
